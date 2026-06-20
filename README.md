@@ -18,3 +18,4 @@ This project aims to build an automated financial data analysis and monitoring s
 1. Install necessary dependencies:
    ```bash
    pip install yfinance pandas matplotlib
+Support batch processing for sector-wide performance tracking
