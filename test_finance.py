@@ -68,28 +68,68 @@ else:
 
 
 
-# 1. 建立一個包含多個股票代碼的「列表 (List)」
-stocks = ['1810.HK', '0700.HK', '9988.HK', '3690.HK'] 
+# 1. Build a list including more than one stocks in HK
+stocks = ['3800.HK', '1810.HK', '9988.HK', '0700.HK', '1347.HK', '0285.HK', '0981.HK'] 
+results_list = []
 
-# 2. 開始「迴圈 (For Loop)」，這就像是用一個掃描器，依次讀取列表裡的每一隻股票
+# 2. Using for loop to scan all stocks in the list.
 for ticker_symbol in stocks:
+    print(f"\n--- start handling: {ticker_symbol} ---")
     
-    # 3. 根據當前的代碼 (ticker_symbol) 建立對應的數據對象
-    ticker = yf.Ticker(ticker_symbol)
+    try:
+        # 3 & 4. 單次下載過去 1 年的數據
+        data = yf.download(ticker_symbol, period="1y")
+
+        if data.empty:
+            print(f"[{ticker_symbol}] no data being taken，because of trading suspension。")
+            continue
+        close_series = data['Close'].squeeze()
+        print(f"[{ticker_symbol}] 數據抓取成功，長度為: {len(data)}")
+        
+        # 5. 計算 MA50 (注意這裡用 data)
+        ma50 = close_series.rolling(window=50).mean().iloc[-1]
+        current_price = close_series.iloc[-1]
+        # === 這裡開始是新增的 RSI14 計算模組 ===
+        
+        # A. 算出每天的「漲跌價差」 (今天收盤價 - 昨天收盤價)
+        delta = close_series.diff()
+        
+        # B. 把上漲和下跌分開
+        # 如果大於 0 就保留，小於 0 就變 0
+        gain = delta.where(delta > 0, 0)
+        # 如果小於 0 就保留並取絕對值 (轉正數)，大於 0 就變 0
+        loss = -delta.where(delta < 0, 0)
+        
+        # C. 計算 14 天的平均上漲與平均下跌 (業界常用指數移動平均 EMA)
+        avg_gain = gain.ewm(span=14, adjust=False).mean()
+        avg_loss = loss.ewm(span=14, adjust=False).mean()
+        
+        # D. 計算 RS (相對強度)
+        # 為了避免除以 0 的錯誤，我們在分母加一個極小的值 1e-10
+        rs = avg_gain / (avg_loss + 1e-10)
+        
+        # E. 計算最終的 RSI 數值，並只取最新一天的結果 (.iloc[-1])
+        rsi_14 = 100 - (100 / (1 + rs)).iloc[-1]
+        
+        # === RSI 計算結束 ===
     
-    # 4. 拉取數據，這裡我們改為近 6 個月的數據
-    df = ticker.history(period="6mo") 
-    
-    # 5. 計算 50 天移動平均線 (MA50)
-    # df['Close'] 是收盤價，.rolling(50).mean() 是取過去50天的平均值
-    # .iloc[-1] 是選取最後一行的數據，代表「最新的一天」的 MA50
-    ma50 = df['Close'].rolling(window=50).mean().iloc[-1]
-    
-    # 6. 獲取最新一天的收盤價
-    current_price = df['Close'].iloc[-1]
-    
-    # 7. 比較邏輯：如果最新價格大於 MA50，狀態就是強勢，否則為弱勢
-    status = "強勢" if current_price > ma50 else "弱勢"
-    
-    # 8. 輸出結果，f-string (f"...") 可以讓你把變數直接塞進文字裡
-    print(f"{ticker_symbol} 目前狀態: {status}")
+        
+        # 7. 比較邏輯
+        status = "Strong" if current_price > ma50 else "Weak"
+        
+        # 8. 輸出雙指標結果
+        print(f"{ticker_symbol} 目前狀態: {status} | RSI: {rsi_14:.2f}")
+        
+        stock_result = {
+            "Ticker": ticker_symbol,
+            "MA50_Status": status,
+            "RSI_14": round(rsi_14, 2),  # round 是用來四捨五入到小數點後兩位
+            "Current_Price": round(current_price, 2)
+        }
+        except Exception as e:
+        print(f"處理 {ticker_symbol} 時發生嚴重錯誤，原因: {e}")
+        continue
+print("\nAll stock have been done！")
+final_report = pd.DataFrame(results_list)
+final_report.to_csv("daily_stock_report.csv", index=True)
+print("Report have been done：daily_stock_report.csv")
