@@ -21,7 +21,7 @@ This project aims to build an automated financial data analysis and monitoring s
 Support batch processing for sector-wide performance tracking
 
 
-# 📈 HK-Stock-Quant-Bot (港股雙因子量化分析機器人)
+# 1. HK-Stock-Quant-Bot (港股雙因子量化分析機器人)
 
 這是一個基於 Python 開發的自動化港股分析工具。透過抓取 Yahoo Finance 的歷史數據，結合 **移動平均線 (MA50)** 與 **相對強弱指數 (RSI14)**，自動產出具備商業價值的結構化量化報表，協助排除市場情緒雜訊，尋找潛在的交易機會。
 
